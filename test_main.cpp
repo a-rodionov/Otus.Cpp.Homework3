@@ -34,6 +34,9 @@ BOOST_AUTO_TEST_CASE(test_factorial_function)
   BOOST_STATIC_ASSERT(5040 == factorial(7));
   BOOST_STATIC_ASSERT(40320 == factorial(8));
   BOOST_STATIC_ASSERT(362880 == factorial(9));
+
+  //BOOST_STATIC_ASSERT(1 == factorial(1.1));   // compilation error
+  BOOST_CHECK_THROW(factorial(-1), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE(test_factorial_template)
