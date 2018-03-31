@@ -19,6 +19,8 @@ add_library(allocator_lib STATIC version.cpp homework_3.cpp)
 
 add_executable(allocator_test_main test_main.cpp)
 
+add_executable(allocator_benchmark allocator_benchmark.cpp)
+
 # Настройка целей
 
 # для всех целей
