@@ -48,4 +48,8 @@ include (CPack)
 
 enable_testing()
 
-add_test(test_suite_main allocator_test_main)
+add_test(test_suite_version allocator_test_main)
+add_test(test_suite_factorial allocator_test_main)
+add_test(test_suite_custom_allocator allocator_test_main)
+add_test(test_suite_custom_forward_list allocator_test_main)
+add_test(test_suite_homework allocator_test_main)

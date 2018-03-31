@@ -9,12 +9,18 @@
 
 #include <boost/test/unit_test.hpp>
 
-BOOST_AUTO_TEST_SUITE(test_suite_main)
+BOOST_AUTO_TEST_SUITE(test_suite_version)
 
 BOOST_AUTO_TEST_CASE(test_version_valid)
 {
   BOOST_CHECK( version() > version_info() );
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(test_suite_factorial)
 
 BOOST_AUTO_TEST_CASE(test_factorial_function)
 {
@@ -44,40 +50,11 @@ BOOST_AUTO_TEST_CASE(test_factorial_template)
   BOOST_STATIC_ASSERT(362880 == factorial_t<9>::value);
 }
 
-BOOST_AUTO_TEST_CASE(test_custom_allocator_continuous_allocation)
-{
-  const uint8_t default_filler{0xAA};
-  const uint8_t magic_filler{0xDD};
-  const auto allocate_block_size{10};
+BOOST_AUTO_TEST_SUITE_END()
 
-  struct magic_word_class
-  {
-    magic_word_class() {
-      memset(&magic_word, magic_filler, sizeof(magic_word));
-    }
-    uint64_t magic_word;
-  };
 
-  const auto bytes_sequence_count{sizeof(magic_word_class) * allocate_block_size};
 
-  std::array<magic_word_class*, allocate_block_size> pointers;
-  custom_allocator<magic_word_class, allocate_block_size> allocator;
-
-  pointers[0] = allocator.allocate(1);
-  auto begin = reinterpret_cast<uint8_t*>(pointers[0]);
-
-  memset(begin, default_filler, bytes_sequence_count);
-  BOOST_CHECK(bytes_sequence_count == std::count(begin, begin + bytes_sequence_count, default_filler));
-
-  allocator.construct(pointers[0]);
-  for(auto i = 1; i < allocate_block_size; ++i)
-  {
-    pointers[i] = allocator.allocate(1);
-    allocator.construct(pointers[i]);
-  }
-  
-  BOOST_CHECK(bytes_sequence_count == std::count(begin, begin + bytes_sequence_count, magic_filler));
-}
+BOOST_AUTO_TEST_SUITE(test_suite_custom_allocator)
 
 static auto malloc_call_count{0};
 void* custom_malloc (size_t size)
@@ -88,252 +65,238 @@ void* custom_malloc (size_t size)
 
 BOOST_AUTO_TEST_CASE(test_custom_allocator_less_allocations)
 {
+  auto pair_generator = [i=0] () mutable {
+    auto value = std::make_pair(i, factorial(i));
+    ++i;
+    return value;
+  };
+
   const auto allocate_block_size{10};
   std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, allocate_block_size, &custom_malloc>> map_custom_allocator;
+  
   malloc_call_count = 0;
-
-  for (int i = 0; i < allocate_block_size; ++i)
-    map_custom_allocator[i] = i;
+  std::generate_n(std::inserter(map_custom_allocator, map_custom_allocator.begin()),
+                  allocate_block_size,
+                  pair_generator);
 
   BOOST_CHECK(1 == malloc_call_count);
   map_custom_allocator[allocate_block_size] = allocate_block_size;
   BOOST_CHECK(2 == malloc_call_count);
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(test_suite_custom_forward_list)
+
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_empty)
 {
-  custom_forward_list<int> fwd_list_default_allocator;
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
+  custom_forward_list<int> test_container_1;
+  BOOST_CHECK(true == test_container_1.empty());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_push_front)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  BOOST_CHECK(0xDEADBEEF == fwd_list_default_allocator.front());
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  BOOST_CHECK(0xABADBABE == fwd_list_default_allocator.front());
+  custom_forward_list<uint64_t> test_container_1;
+  test_container_1.push_front(0xDEADBEEF);
+  BOOST_CHECK(false == test_container_1.empty());
+  BOOST_CHECK(0xDEADBEEF == test_container_1.front());
+  test_container_1.push_front(0xABADBABE);
+  BOOST_CHECK(false == test_container_1.empty());
+  BOOST_CHECK(0xABADBABE == test_container_1.front());
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+struct initialized_one_list
+{
+  initialized_one_list()
+  {
+    test_container_1.push_front(0xDEADBEEF);
+    test_container_1.push_front(0xABADBABE);
+  }
+
+  custom_forward_list<uint64_t> test_container_1;
+};
+
+BOOST_FIXTURE_TEST_SUITE(fixture_test_suite_custom_forward_list, initialized_one_list)
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_pop_front)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  BOOST_CHECK(0xABADBABE == fwd_list_default_allocator.front());
-  fwd_list_default_allocator.pop_front();
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  BOOST_CHECK(0xDEADBEEF == fwd_list_default_allocator.front());
-  fwd_list_default_allocator.pop_front();
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
+  BOOST_CHECK(0xABADBABE == test_container_1.front());
+  test_container_1.pop_front();
+  BOOST_CHECK(0xDEADBEEF == test_container_1.front());
+  test_container_1.pop_front();
+  BOOST_CHECK(true == test_container_1.empty());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_size)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  BOOST_CHECK(0 == fwd_list_default_allocator.size());
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  BOOST_CHECK(1 == fwd_list_default_allocator.size());
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  BOOST_CHECK(2 == fwd_list_default_allocator.size());
-  fwd_list_default_allocator.pop_front();
-  BOOST_CHECK(1 == fwd_list_default_allocator.size());
-  fwd_list_default_allocator.pop_front();
-  BOOST_CHECK(0 == fwd_list_default_allocator.size());
+  BOOST_CHECK(2 == test_container_1.size());
+  test_container_1.pop_front();
+  BOOST_CHECK(1 == test_container_1.size());
+  test_container_1.pop_front();
+  BOOST_CHECK(0 == test_container_1.size());
+
+  decltype(test_container_1) test_container_2;
+  BOOST_CHECK(0 == test_container_2.size());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_clear)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  fwd_list_default_allocator.clear();
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
+  BOOST_CHECK(false == test_container_1.empty());
+  test_container_1.clear();
+  BOOST_CHECK(true == test_container_1.empty());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_iterator)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  BOOST_CHECK(0 == std::distance(fwd_list_default_allocator.begin(), fwd_list_default_allocator.end()));
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  BOOST_CHECK(2 == std::distance(fwd_list_default_allocator.begin(), fwd_list_default_allocator.end()));
-  auto itr = fwd_list_default_allocator.begin();
+  BOOST_CHECK(2 == std::distance(test_container_1.cbegin(), test_container_1.cend()));
+  auto itr = test_container_1.cbegin();
   BOOST_CHECK(0xABADBABE == *itr);
   ++itr;
   BOOST_CHECK(0xDEADBEEF == *itr);
   ++itr;
-  BOOST_CHECK(itr == fwd_list_default_allocator.end());
+  BOOST_CHECK(itr == test_container_1.cend());
+  test_container_1.clear();
+  BOOST_CHECK(0 == std::distance(test_container_1.cbegin(), test_container_1.cend()));
 }
 
-BOOST_AUTO_TEST_CASE(test_custom_forward_list_equal)
+BOOST_AUTO_TEST_CASE(test_custom_forward_list_equality)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
-
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2;
-  fwd_list_default_allocator_2.push_front(0xDEADBEEF);
-  fwd_list_default_allocator_2.push_front(0xABADBABE);
-
-  BOOST_CHECK(fwd_list_default_allocator == fwd_list_default_allocator_2);
-}
-
-BOOST_AUTO_TEST_CASE(test_custom_forward_list_not_equal)
-{
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
-
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2;
-  fwd_list_default_allocator_2.push_front(0xDEADBEEF);
-
-  BOOST_CHECK(fwd_list_default_allocator != fwd_list_default_allocator_2);
+  decltype(test_container_1) test_container_2;
+  test_container_2.push_front(0xDEADBEEF);
+  BOOST_CHECK(test_container_1 != test_container_2);
+  test_container_2.push_front(0xABADBABE);
+  BOOST_CHECK(test_container_1 == test_container_2);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_copy_ctr)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
+  decltype(test_container_1) test_container_2{test_container_1};
 
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2{fwd_list_default_allocator};
-
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  BOOST_CHECK(false == fwd_list_default_allocator_2.empty());
-  BOOST_CHECK(fwd_list_default_allocator.front() == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(&fwd_list_default_allocator.front() != &fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator.pop_front();
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(fwd_list_default_allocator.front() == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(&fwd_list_default_allocator.front() != &fwd_list_default_allocator_2.front());
+  BOOST_CHECK(false == test_container_1.empty());
+  BOOST_CHECK(false == test_container_2.empty());
+  BOOST_CHECK(test_container_1.front() == test_container_2.front());
+  BOOST_CHECK(&test_container_1.front() != &test_container_2.front());
+  test_container_1.pop_front();
+  test_container_2.pop_front();
+  BOOST_CHECK(test_container_1.front() == test_container_2.front());
+  BOOST_CHECK(&test_container_1.front() != &test_container_2.front());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_assign)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
+  decltype(test_container_1) test_container_2;
+  test_container_2 = test_container_1;
 
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2;
-  fwd_list_default_allocator_2 = fwd_list_default_allocator;
-
-  BOOST_CHECK(false == fwd_list_default_allocator.empty());
-  BOOST_CHECK(false == fwd_list_default_allocator_2.empty());
-  BOOST_CHECK(fwd_list_default_allocator.front() == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(&fwd_list_default_allocator.front() != &fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator.pop_front();
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(fwd_list_default_allocator.front() == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(&fwd_list_default_allocator.front() != &fwd_list_default_allocator_2.front());
+  BOOST_CHECK(false == test_container_1.empty());
+  BOOST_CHECK(false == test_container_2.empty());
+  BOOST_CHECK(test_container_1.front() == test_container_2.front());
+  BOOST_CHECK(&test_container_1.front() != &test_container_2.front());
+  test_container_1.pop_front();
+  test_container_2.pop_front();
+  BOOST_CHECK(test_container_1.front() == test_container_2.front());
+  BOOST_CHECK(&test_container_1.front() != &test_container_2.front());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_ctr)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  auto address_1 =& fwd_list_default_allocator.front();
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  auto address_2 =& fwd_list_default_allocator.front();
+  auto itr = test_container_1.cbegin();
+  auto address_1 =& *itr;
+  ++itr;
+  auto address_2 =& *itr;
 
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2{std::move(fwd_list_default_allocator)};
+  decltype(test_container_1) test_container_2{std::move(test_container_1)};
 
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
-  BOOST_CHECK(false == fwd_list_default_allocator_2.empty());
-  BOOST_CHECK(0xABADBABE == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(address_2 == &fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(0xDEADBEEF == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(address_1 == &fwd_list_default_allocator_2.front());
+  BOOST_CHECK(true == test_container_1.empty());
+  BOOST_CHECK(false == test_container_2.empty());
+  BOOST_CHECK(0xABADBABE == test_container_2.front());
+  BOOST_CHECK(address_1 == &test_container_2.front());
+  test_container_2.pop_front();
+  BOOST_CHECK(0xDEADBEEF == test_container_2.front());
+  BOOST_CHECK(address_2 == &test_container_2.front());
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_asign)
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  auto address_1 =& fwd_list_default_allocator.front();
-  fwd_list_default_allocator.push_front(0xABADBABE);
-  auto address_2 =& fwd_list_default_allocator.front();
+  auto itr = test_container_1.cbegin();
+  auto address_1 =& *itr;
+  ++itr;
+  auto address_2 =& *itr;
 
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2;
-  fwd_list_default_allocator_2 = std::move(fwd_list_default_allocator);
+  decltype(test_container_1) test_container_2;
+  test_container_2 = std::move(test_container_1);
   
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
-  BOOST_CHECK(false == fwd_list_default_allocator_2.empty());
-  BOOST_CHECK(0xABADBABE == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(address_2 == &fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(0xDEADBEEF == fwd_list_default_allocator_2.front());
-  BOOST_CHECK(address_1 == &fwd_list_default_allocator_2.front());
+  BOOST_CHECK(true == test_container_1.empty());
+  BOOST_CHECK(false == test_container_2.empty());
+  BOOST_CHECK(0xABADBABE == test_container_2.front());
+  BOOST_CHECK(address_1 == &test_container_2.front());
+  test_container_2.pop_front();
+  BOOST_CHECK(0xDEADBEEF == test_container_2.front());
+  BOOST_CHECK(address_2 == &test_container_2.front());
 }
 
-BOOST_AUTO_TEST_CASE(test_custom_forward_list_swap)
+struct initialized_two_lists : initialized_one_list
 {
-  custom_forward_list<uint64_t> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
+  initialized_two_lists()
+  {
+    test_container_2.push_front(0x55555555);
+    test_container_2.push_front(0x77777777);
+    test_container_2.push_front(0x99999999);
+  }
 
-  custom_forward_list<uint64_t> fwd_list_default_allocator_2;
-  fwd_list_default_allocator_2.push_front(0x55555555);
-  fwd_list_default_allocator_2.push_front(0x77777777);
-  fwd_list_default_allocator_2.push_front(0x99999999);
+  custom_forward_list<uint64_t> test_container_2;
+};
 
-  BOOST_CHECK(2 == fwd_list_default_allocator.size());
-  BOOST_CHECK(3 == fwd_list_default_allocator_2.size());
+BOOST_FIXTURE_TEST_CASE(test_custom_forward_list_swap, initialized_two_lists)
+{
+  BOOST_CHECK(2 == test_container_1.size());
+  BOOST_CHECK(3 == test_container_2.size());
 
-  fwd_list_default_allocator.swap(fwd_list_default_allocator_2);
+  test_container_1.swap(test_container_2);
 
-  BOOST_CHECK(3 == fwd_list_default_allocator.size());
-  BOOST_CHECK(2 == fwd_list_default_allocator_2.size());
-  BOOST_CHECK(0x99999999 == fwd_list_default_allocator.front());
-  BOOST_CHECK(0xABADBABE == fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator.pop_front();
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(0x77777777 == fwd_list_default_allocator.front());
-  BOOST_CHECK(0xDEADBEEF == fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator.pop_front();
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(0x55555555 == fwd_list_default_allocator.front());
-  fwd_list_default_allocator.pop_front();
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
-  BOOST_CHECK(true == fwd_list_default_allocator_2.empty());
+  BOOST_CHECK(3 == test_container_1.size());
+  BOOST_CHECK(2 == test_container_2.size());
+  BOOST_CHECK(0x99999999 == test_container_1.front());
+  BOOST_CHECK(0xABADBABE == test_container_2.front());
+  test_container_1.pop_front();
+  test_container_2.pop_front();
+  BOOST_CHECK(0x77777777 == test_container_1.front());
+  BOOST_CHECK(0xDEADBEEF == test_container_2.front());
+  test_container_1.pop_front();
+  test_container_2.pop_front();
+  BOOST_CHECK(0x55555555 == test_container_1.front());
 }
 
-BOOST_AUTO_TEST_CASE(test_custom_forward_list_swap_global_funtion)
+BOOST_FIXTURE_TEST_CASE(test_custom_forward_list_swap_global_funtion, initialized_two_lists)
 {
-  custom_forward_list<uint64_t, custom_allocator<uint64_t, 10>> fwd_list_default_allocator;
-  fwd_list_default_allocator.push_front(0xDEADBEEF);
-  fwd_list_default_allocator.push_front(0xABADBABE);
+  BOOST_CHECK(2 == test_container_1.size());
+  BOOST_CHECK(3 == test_container_2.size());
 
-  custom_forward_list<uint64_t, custom_allocator<uint64_t, 10>> fwd_list_default_allocator_2;
-  fwd_list_default_allocator_2.push_front(0x55555555);
-  fwd_list_default_allocator_2.push_front(0x77777777);
-  fwd_list_default_allocator_2.push_front(0x99999999);
-
-  BOOST_CHECK(2 == fwd_list_default_allocator.size());
-  BOOST_CHECK(3 == fwd_list_default_allocator_2.size());
-
-  swap(fwd_list_default_allocator, fwd_list_default_allocator_2);
+  swap(test_container_1, test_container_2);
   
-  BOOST_CHECK(3 == fwd_list_default_allocator.size());
-  BOOST_CHECK(2 == fwd_list_default_allocator_2.size());
-  BOOST_CHECK(0x99999999 == fwd_list_default_allocator.front());
-  BOOST_CHECK(0xABADBABE == fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator.pop_front();
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(0x77777777 == fwd_list_default_allocator.front());
-  BOOST_CHECK(0xDEADBEEF == fwd_list_default_allocator_2.front());
-  fwd_list_default_allocator.pop_front();
-  fwd_list_default_allocator_2.pop_front();
-  BOOST_CHECK(0x55555555 == fwd_list_default_allocator.front());
-  fwd_list_default_allocator.pop_front();
-  BOOST_CHECK(true == fwd_list_default_allocator.empty());
-  BOOST_CHECK(true == fwd_list_default_allocator_2.empty());
+  BOOST_CHECK(3 == test_container_1.size());
+  BOOST_CHECK(2 == test_container_2.size());
+  BOOST_CHECK(0x99999999 == test_container_1.front());
+  BOOST_CHECK(0xABADBABE == test_container_2.front());
+  test_container_1.pop_front();
+  test_container_2.pop_front();
+  BOOST_CHECK(0x77777777 == test_container_1.front());
+  BOOST_CHECK(0xDEADBEEF == test_container_2.front());
+  test_container_1.pop_front();
+  test_container_2.pop_front();
+  BOOST_CHECK(0x55555555 == test_container_1.front());
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(test_suite_homework)
 
 BOOST_AUTO_TEST_CASE(test_homework_3_valid)
 {
