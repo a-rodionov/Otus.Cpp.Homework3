@@ -5,12 +5,15 @@
 #include <list>
 #include <bitset>
 #include <stdexcept>
+#include <memory>
 
 template<typename T,
         std::size_t ALLOC_AT_ONCE_COUNT,
         decltype(&std::malloc) custom_malloc = &std::malloc,
         decltype(&std::free) custom_free = &std::free>
 class custom_allocator {
+
+  static_assert(0 != ALLOC_AT_ONCE_COUNT, "2nd template parameter must be not equal to 0.");
 
 public:
 
@@ -27,9 +30,9 @@ public:
   custom_allocator() = default;
 
   custom_allocator(custom_allocator&& other)
-    : allocated_blocks{other.allocated_blocks} {}
+    : allocated_blocks{std::forward<decltype(allocated_blocks)>(other.allocated_blocks)} {}
 
-  custom_allocator& operator=(custom_allocator&) = default;
+  custom_allocator& operator=(const custom_allocator&) = default;
 
   pointer allocate(std::size_t n ) {
     //std::cout << __PRETTY_FUNCTION__ << std::endl;
@@ -56,12 +59,13 @@ public:
       auto p = custom_malloc( ALLOC_AT_ONCE_COUNT * sizeof(T) );
       if(!p)
         throw std::bad_alloc();
-      allocated_blocks.push_back(std::make_pair(reinterpret_cast<pointer>(p), std::bitset<ALLOC_AT_ONCE_COUNT>{1}));
-      return allocated_blocks.back().first;
+      allocated_blocks.push_back(std::make_pair(std::unique_ptr<void, decltype(&std::free)>(p, custom_free),
+                                                std::bitset<ALLOC_AT_ONCE_COUNT>{1}));
+      return reinterpret_cast<pointer>(allocated_blocks.back().first.get());
     }
 
     not_full_block->second[position] = 1;
-    return not_full_block->first + position;
+    return reinterpret_cast<pointer>(not_full_block->first.get()) + position;
   }
 
   void deallocate(pointer p, std::size_t n) {
@@ -71,14 +75,13 @@ public:
                                          allocated_blocks.end(),
                                          [p] (const auto& block_description)
                                          {
-                                          return ((p >= block_description.first)
-                                                  && (p <= block_description.first + block_description.second.size() - 1));
+                                          return ((p >= reinterpret_cast<pointer>(block_description.first.get()))
+                                                  && (p <= reinterpret_cast<pointer>(block_description.first.get()) + block_description.second.size() - 1));
                                          });
     if(allocated_blocks.end() == allocated_block)
       return;
-    allocated_block->second[p - allocated_block->first] = 0;
+    allocated_block->second[p - reinterpret_cast<pointer>(allocated_block->first.get())] = 0;
     if(allocated_block->second.none()) {
-      custom_free(allocated_block->first);
       allocated_blocks.erase(allocated_block);
     }
   }
@@ -96,5 +99,5 @@ public:
 
 private:
 
-  std::list<std::pair<pointer, std::bitset<ALLOC_AT_ONCE_COUNT>>> allocated_blocks;
+  std::list<std::pair<std::unique_ptr<void, decltype(&std::free)>, std::bitset<ALLOC_AT_ONCE_COUNT>>> allocated_blocks;
 };
