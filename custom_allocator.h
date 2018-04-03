@@ -41,8 +41,8 @@ public:
       throw std::invalid_argument("custom_allocator can allocate only 1 element by call");
 
     std::size_t position{};
-    auto not_full_block = std::find_if (allocated_blocks.begin(),
-                                        allocated_blocks.end(),
+    auto not_full_block = std::find_if (std::begin(allocated_blocks),
+                                        std::end(allocated_blocks),
                                         [&position] (const auto& block_description)
                                         {
                                           if(block_description.second.all())
@@ -55,7 +55,7 @@ public:
                                           return false;
                                         });
 
-    if(allocated_blocks.end() == not_full_block) {
+    if(std::end(allocated_blocks) == not_full_block) {
       auto p = custom_malloc( ALLOC_AT_ONCE_COUNT * sizeof(T) );
       if(!p)
         throw std::bad_alloc();
@@ -71,14 +71,14 @@ public:
   void deallocate(pointer p, std::size_t n) {
     //std::cout << __PRETTY_FUNCTION__ << std::endl;
 
-    auto allocated_block = std::find_if (allocated_blocks.begin(),
-                                         allocated_blocks.end(),
+    auto allocated_block = std::find_if (std::begin(allocated_blocks),
+                                         std::end(allocated_blocks),
                                          [p] (const auto& block_description)
                                          {
                                           return ((p >= reinterpret_cast<pointer>(block_description.first.get()))
                                                   && (p <= reinterpret_cast<pointer>(block_description.first.get()) + block_description.second.size() - 1));
                                          });
-    if(allocated_blocks.end() == allocated_block)
+    if(std::end(allocated_blocks) == allocated_block)
       return;
     allocated_block->second[p - reinterpret_cast<pointer>(allocated_block->first.get())] = 0;
     if(allocated_block->second.none()) {

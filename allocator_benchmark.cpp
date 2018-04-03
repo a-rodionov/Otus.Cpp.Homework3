@@ -10,7 +10,7 @@ auto Benchmark(std::size_t iterations, Generator generator)
   Container container;
 
   auto start = std::chrono::high_resolution_clock::now();
-  std::generate_n(std::inserter(container, container.begin()),
+  std::generate_n(std::inserter(container, std::begin(container)),
                   iterations,
                   generator);
   auto end = std::chrono::high_resolution_clock::now();

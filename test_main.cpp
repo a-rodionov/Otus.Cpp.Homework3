@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(test_custom_allocator_less_allocations)
   std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, allocate_block_size, &custom_malloc>> map_custom_allocator;
   
   malloc_call_count = 0;
-  std::generate_n(std::inserter(map_custom_allocator, map_custom_allocator.begin()),
+  std::generate_n(std::inserter(map_custom_allocator, std::begin(map_custom_allocator)),
                   allocate_block_size,
                   pair_generator);
 
@@ -157,15 +157,15 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_clear)
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_iterator)
 {
-  BOOST_CHECK(2 == std::distance(test_container_1.cbegin(), test_container_1.cend()));
-  auto itr = test_container_1.cbegin();
+  BOOST_CHECK(2 == std::distance(std::cbegin(test_container_1), std::cend(test_container_1)));
+  auto itr = std::cbegin(test_container_1);
   BOOST_CHECK(0xABADBABE == *itr);
   ++itr;
   BOOST_CHECK(0xDEADBEEF == *itr);
   ++itr;
-  BOOST_CHECK(itr == test_container_1.cend());
+  BOOST_CHECK(itr == std::cend(test_container_1));
   test_container_1.clear();
-  BOOST_CHECK(0 == std::distance(test_container_1.cbegin(), test_container_1.cend()));
+  BOOST_CHECK(0 == std::distance(std::cbegin(test_container_1), std::cend(test_container_1)));
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_equality)
@@ -208,7 +208,7 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_assign)
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_ctr)
 {
-  auto itr = test_container_1.cbegin();
+  auto itr = std::cbegin(test_container_1);
   auto address_1 =& *itr;
   ++itr;
   auto address_2 =& *itr;
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_ctr)
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_asign)
 {
-  auto itr = test_container_1.cbegin();
+  auto itr = std::cbegin(test_container_1);
   auto address_1 =& *itr;
   ++itr;
   auto address_2 =& *itr;

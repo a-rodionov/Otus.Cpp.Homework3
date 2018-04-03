@@ -150,7 +150,7 @@ public:
 
   custom_forward_list(const custom_forward_list& other)
   {
-    copy(other.cbegin(), other.cend());
+    copy(std::cbegin(other), std::cend(other));
   }
 
   custom_forward_list(custom_forward_list&& other)
@@ -168,7 +168,7 @@ public:
   custom_forward_list& operator=(const custom_forward_list& other)
   {
     clear();
-    copy(other.cbegin(), other.cend());
+    copy(std::cbegin(other), std::cend(other));
   }
 
   custom_forward_list& operator=(custom_forward_list&& other)
@@ -181,12 +181,12 @@ public:
 
   bool operator==(const custom_forward_list& other) const
   {
-    return std::equal(this->cbegin(), this->cend(), other.cbegin(), other.cend());
+    return std::equal(std::cbegin(*this), std::cend(*this), std::cbegin(other), std::cend(other));
   }
 
   bool operator!=(const custom_forward_list& other) const
   {
-    return !std::equal(this->cbegin(), this->cend(), other.cbegin(), other.cend());
+    return !std::equal(std::cbegin(*this), std::cend(*this), std::cbegin(other), std::cend(other));
   }
 
   void swap(custom_forward_list& other)
@@ -239,7 +239,7 @@ public:
 
   size_type size() const noexcept
   {
-    return std::distance(cbegin(), cend());
+    return std::distance(std::cbegin(*this), std::cend(*this));
   }
 
   void clear() noexcept
@@ -253,9 +253,19 @@ public:
     return iterator{head.next};
   }
 
+  const_iterator begin() const noexcept
+  {
+    return const_iterator{head.next};
+  }
+
   iterator end() noexcept
   {
     return iterator{nullptr};
+  }
+
+  const_iterator end() const noexcept
+  {
+    return const_iterator{nullptr};
   }
 
   const_iterator cbegin() const noexcept
@@ -267,7 +277,7 @@ public:
   {
     return const_iterator{nullptr};
   }
- 
+
 private:
 
   void copy(const_iterator first, const_iterator last)

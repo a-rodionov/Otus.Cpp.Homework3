@@ -17,12 +17,12 @@ void homework_3(std::ostream& out)
   };
 
   std::map<int, int> map_default_allocator;
-  std::generate_n(std::inserter(map_default_allocator, map_default_allocator.begin()),
+  std::generate_n(std::inserter(map_default_allocator, std::begin(map_default_allocator)),
                   10,
                   pair_generator);
 
   std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, 10>> map_custom_allocator;
-  std::generate_n(std::inserter(map_custom_allocator, map_custom_allocator.begin()),
+  std::generate_n(std::inserter(map_custom_allocator, std::begin(map_custom_allocator)),
                   10,
                   pair_generator);
 
