@@ -19,8 +19,6 @@ add_library(allocator_lib STATIC version.cpp homework_3.cpp)
 
 add_executable(allocator_test_main test_main.cpp)
 
-add_executable(allocator_benchmark allocator_benchmark.cpp)
-
 # Настройка целей
 
 # для всех целей
@@ -55,3 +53,4 @@ add_test(test_suite_factorial allocator_test_main)
 add_test(test_suite_custom_allocator allocator_test_main)
 add_test(test_suite_custom_forward_list allocator_test_main)
 add_test(test_suite_homework allocator_test_main)
+add_test(test_suite_benchmark allocator_test_main)

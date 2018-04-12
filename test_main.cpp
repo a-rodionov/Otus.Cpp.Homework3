@@ -4,10 +4,14 @@
 #include "custom_forward_list.h"
 #include "homework_3.h"
 #include <map>
+#include <chrono>
 
 #define BOOST_TEST_MODULE test_main
 
 #include <boost/test/unit_test.hpp>
+#include <boost/test/included/unit_test.hpp>
+
+
 
 BOOST_AUTO_TEST_SUITE(test_suite_version)
 
@@ -329,6 +333,48 @@ BOOST_AUTO_TEST_CASE(test_homework_3_valid)
 
   homework_3(oss);
   BOOST_CHECK_EQUAL(oss.str(), result);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(test_suite_benchmark)
+
+template<typename Container, typename Generator>
+auto Benchmark(std::size_t iterations, const Generator& generator)
+{
+  Container container;
+
+  auto start = std::chrono::high_resolution_clock::now();
+  std::generate_n(std::inserter(container, std::begin(container)),
+                  iterations,
+                  generator);
+  auto end = std::chrono::high_resolution_clock::now();
+
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+}
+
+BOOST_AUTO_TEST_CASE(test_custom_allocator_benchmark)
+{
+  const std::size_t iterations{100000};
+  auto pair_generator = [i=0] () mutable {
+    auto value = std::make_pair(i, i);
+    ++i;
+    return value;
+  };
+
+  boost::unit_test::unit_test_log_t::instance().set_threshold_level( boost::unit_test::log_messages );
+
+  BOOST_TEST_MESSAGE("Benchmark of std::allocator and custom_allocator used by std::map. Iterations = " << iterations);
+  auto ms = Benchmark<std::map<int, int>>(iterations, pair_generator);
+  BOOST_TEST_MESSAGE("elapsed time for std::allocator: " << ms << "ms");
+  ms = Benchmark<std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, 1000>>>(iterations, pair_generator);
+  BOOST_TEST_MESSAGE("elapsed time for custom_allocator with block size for 1000 elements: " << ms << "ms");
+  ms = Benchmark<std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, 100>>>(iterations, pair_generator);
+  BOOST_TEST_MESSAGE("elapsed time for custom_allocator with block size for 100 elements: " << ms << "ms");
+
+  boost::unit_test::unit_test_log_t::instance().set_threshold_level( boost::unit_test::log_all_errors );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
