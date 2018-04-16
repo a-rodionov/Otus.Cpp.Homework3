@@ -1,5 +1,7 @@
 #include "version.h"
 
+namespace homework3{
+
 bool operator==(const version_info& lhs, const version_info& rhs) {
   if ((lhs._major == rhs._major)
     && (lhs._minor == rhs._minor)
@@ -43,4 +45,6 @@ version_info version()
   return version_info(PROJECT_VERSION_MAJOR,
                       PROJECT_VERSION_MINOR,
                       PROJECT_VERSION_PATCH);
+}
+
 }

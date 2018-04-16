@@ -3,6 +3,9 @@
 #include "utils.h"
 #include "custom_allocator.h"
 #include "custom_forward_list.h"
+#include "newdelete.h"
+
+namespace homework3 {
 
 void homework_3(std::ostream& out)
 {
@@ -41,4 +44,6 @@ void homework_3(std::ostream& out)
                   sequence_generator);
   for(const auto& element : custom_forward_list_custom_allocator)
     out << element << std::endl;
+}
+
 }

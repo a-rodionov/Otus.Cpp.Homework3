@@ -3,13 +3,18 @@
 #include "custom_allocator.h"
 #include "custom_forward_list.h"
 #include "homework_3.h"
+#include "newdelete.h"
 #include <map>
 #include <chrono>
+#include <numeric>
+#include <iterator>
 
 #define BOOST_TEST_MODULE test_main
 
 #include <boost/test/unit_test.hpp>
 #include <boost/test/included/unit_test.hpp>
+
+using namespace homework3;
 
 
 
@@ -63,13 +68,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(test_suite_custom_allocator)
 
-static auto malloc_call_count{0};
-void* custom_malloc (size_t size)
-{
-  ++malloc_call_count;
-  return std::malloc(size);
-};
-
 BOOST_AUTO_TEST_CASE(test_custom_allocator_less_allocations)
 {
   auto pair_generator = [i=0] () mutable {
@@ -79,16 +77,23 @@ BOOST_AUTO_TEST_CASE(test_custom_allocator_less_allocations)
   };
 
   const auto allocate_block_size{10};
-  std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, allocate_block_size, &custom_malloc>> map_custom_allocator;
-  
-  malloc_call_count = 0;
-  std::generate_n(std::inserter(map_custom_allocator, std::begin(map_custom_allocator)),
-                  allocate_block_size,
-                  pair_generator);
+  const auto alloc_counter_begin = alloc_counter;
+  {
+    std::map<int, int, std::less<int>, custom_allocator<std::pair<const int, int>, allocate_block_size>> map_custom_allocator;
+    
+    std::generate_n(std::inserter(map_custom_allocator, std::begin(map_custom_allocator)),
+                    allocate_block_size,
+                    pair_generator);
 
-  BOOST_CHECK(1 == malloc_call_count);
-  map_custom_allocator[allocate_block_size] = allocate_block_size;
-  BOOST_CHECK(2 == malloc_call_count);
+    const auto alloc_counter_with_custom_allocations = alloc_counter;
+
+    std::map<int, int> map_default_allocator;
+    std::generate_n(std::inserter(map_default_allocator, std::begin(map_default_allocator)),
+                    allocate_block_size,
+                    pair_generator);
+    BOOST_CHECK((alloc_counter_with_custom_allocations - alloc_counter_begin) < (alloc_counter - alloc_counter_with_custom_allocations));
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -105,13 +110,17 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_empty)
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_push_front)
 {
-  custom_forward_list<uint64_t> test_container_1;
-  test_container_1.push_front(0xDEADBEEF);
-  BOOST_CHECK(false == test_container_1.empty());
-  BOOST_CHECK(0xDEADBEEF == test_container_1.front());
-  test_container_1.push_front(0xABADBABE);
-  BOOST_CHECK(false == test_container_1.empty());
-  BOOST_CHECK(0xABADBABE == test_container_1.front());
+  const auto alloc_counter_begin = alloc_counter;
+  {
+    custom_forward_list<uint64_t> test_container_1;
+    test_container_1.push_front(0xDEADBEEF);
+    BOOST_CHECK(false == test_container_1.empty());
+    BOOST_CHECK(0xDEADBEEF == test_container_1.front());
+    test_container_1.push_front(0xABADBABE);
+    BOOST_CHECK(false == test_container_1.empty());
+    BOOST_CHECK(0xABADBABE == test_container_1.front());
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -122,11 +131,14 @@ struct initialized_one_list
 {
   initialized_one_list()
   {
+    alloc_counter_begin = alloc_counter;
+
     test_container_1.push_front(0xDEADBEEF);
     test_container_1.push_front(0xABADBABE);
   }
 
   custom_forward_list<uint64_t> test_container_1;
+  decltype(alloc_counter) alloc_counter_begin;
 };
 
 BOOST_FIXTURE_TEST_SUITE(fixture_test_suite_custom_forward_list, initialized_one_list)
@@ -138,6 +150,8 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_pop_front)
   BOOST_CHECK(0xDEADBEEF == test_container_1.front());
   test_container_1.pop_front();
   BOOST_CHECK(true == test_container_1.empty());
+
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_size)
@@ -150,6 +164,8 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_size)
 
   decltype(test_container_1) test_container_2;
   BOOST_CHECK(0 == test_container_2.size());
+
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_clear)
@@ -157,6 +173,8 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_clear)
   BOOST_CHECK(false == test_container_1.empty());
   test_container_1.clear();
   BOOST_CHECK(true == test_container_1.empty());
+
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_iterator)
@@ -170,6 +188,8 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_iterator)
   BOOST_CHECK(itr == std::cend(test_container_1));
   test_container_1.clear();
   BOOST_CHECK(0 == std::distance(std::cbegin(test_container_1), std::cend(test_container_1)));
+
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_equality)
@@ -179,6 +199,10 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_equality)
   BOOST_CHECK(test_container_1 != test_container_2);
   test_container_2.push_front(0xABADBABE);
   BOOST_CHECK(test_container_1 == test_container_2);
+
+  test_container_1.clear();
+  test_container_2.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_copy_ctr)
@@ -193,6 +217,10 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_copy_ctr)
   test_container_2.pop_front();
   BOOST_CHECK(test_container_1.front() == test_container_2.front());
   BOOST_CHECK(&test_container_1.front() != &test_container_2.front());
+
+  test_container_1.clear();
+  test_container_2.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_assign)
@@ -208,6 +236,10 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_assign)
   test_container_2.pop_front();
   BOOST_CHECK(test_container_1.front() == test_container_2.front());
   BOOST_CHECK(&test_container_1.front() != &test_container_2.front());
+
+  test_container_1.clear();
+  test_container_2.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_ctr)
@@ -226,6 +258,9 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_ctr)
   test_container_2.pop_front();
   BOOST_CHECK(0xDEADBEEF == test_container_2.front());
   BOOST_CHECK(address_2 == &test_container_2.front());
+
+  test_container_2.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_asign)
@@ -245,6 +280,9 @@ BOOST_AUTO_TEST_CASE(test_custom_forward_list_move_asign)
   test_container_2.pop_front();
   BOOST_CHECK(0xDEADBEEF == test_container_2.front());
   BOOST_CHECK(address_2 == &test_container_2.front());
+
+  test_container_2.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 struct initialized_two_lists : initialized_one_list
@@ -277,6 +315,9 @@ BOOST_FIXTURE_TEST_CASE(test_custom_forward_list_swap, initialized_two_lists)
   test_container_1.pop_front();
   test_container_2.pop_front();
   BOOST_CHECK(0x55555555 == test_container_1.front());
+
+  test_container_1.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_custom_forward_list_swap_global_funtion, initialized_two_lists)
@@ -297,6 +338,94 @@ BOOST_FIXTURE_TEST_CASE(test_custom_forward_list_swap_global_funtion, initialize
   test_container_1.pop_front();
   test_container_2.pop_front();
   BOOST_CHECK(0x55555555 == test_container_1.front());
+
+  test_container_1.clear();
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(test_suite_memory_leak)
+
+BOOST_AUTO_TEST_CASE(test_suite_memory_leak)
+{
+  const auto alloc_counter_begin = alloc_counter;
+  const auto allocate_block_size{10};
+  
+  {
+    custom_forward_list<int, custom_allocator<int, allocate_block_size>> container;
+    
+    std::generate_n(std::front_inserter(container),
+                  3 * allocate_block_size,
+                  [i=0] () mutable { return i++; });
+    BOOST_CHECK(alloc_counter != alloc_counter_begin);
+
+    container.push_front(31);
+    container.push_front(32);
+    container.pop_front();
+    container.pop_front();
+    container.pop_front();
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
+
+  {
+    custom_forward_list<int, custom_allocator<int, allocate_block_size>> container;
+    std::generate_n(std::front_inserter(container),
+                  3 * allocate_block_size,
+                  [i=0] () mutable { return i++; });
+
+    decltype(container) container_2;
+    container_2 = container;
+    container_2.push_front(31);
+    container.push_front(31);
+    container.pop_front();
+    container.pop_front();
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
+
+  {
+    custom_forward_list<int, custom_allocator<int, allocate_block_size>> container;
+    std::generate_n(std::front_inserter(container),
+                  3 * allocate_block_size,
+                  [i=0] () mutable { return i++; });
+
+    decltype(container) container_2{std::move(container)};
+    container_2.push_front(31);
+    container_2.pop_front();
+    container_2.pop_front();
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
+
+  {
+    custom_forward_list<int, custom_allocator<int, allocate_block_size>> container;
+    std::generate_n(std::front_inserter(container),
+                  3 * allocate_block_size,
+                  [i=0] () mutable { return i++; });
+
+    decltype(container) container_2;
+    container_2 = std::move(container);
+    container_2.push_front(31);
+    container_2.pop_front();
+    container_2.pop_front();
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
+
+  {
+    custom_forward_list<int, custom_allocator<int, allocate_block_size>> container;
+    std::generate_n(std::front_inserter(container),
+                  3 * allocate_block_size,
+                  [i=0] () mutable { return i++; });
+
+    decltype(container) container_2;
+    container_2 = container;
+    container_2.push_front(31);
+    container.pop_front();
+    container.pop_front();
+    container.swap(container_2);
+  }
+  BOOST_CHECK(alloc_counter == alloc_counter_begin);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

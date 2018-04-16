@@ -1,5 +1,7 @@
 #include "homework_3.h"
 
+using namespace homework3;
+
 int main(int argc, char const *argv[])
 {
   try

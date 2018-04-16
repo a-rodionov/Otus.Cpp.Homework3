@@ -15,7 +15,7 @@ configure_file(version_numbers.h.in version_numbers.h)
 # Создание целей
 add_executable(allocator main.cpp)
 
-add_library(allocator_lib STATIC version.cpp homework_3.cpp)
+add_library(allocator_lib STATIC version.cpp homework_3.cpp newdelete.cpp)
 
 add_executable(allocator_test_main test_main.cpp)
 
@@ -52,5 +52,6 @@ add_test(test_suite_version allocator_test_main)
 add_test(test_suite_factorial allocator_test_main)
 add_test(test_suite_custom_allocator allocator_test_main)
 add_test(test_suite_custom_forward_list allocator_test_main)
+add_test(test_suite_memory_leak allocator_test_main)
 add_test(test_suite_homework allocator_test_main)
 add_test(test_suite_benchmark allocator_test_main)

@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <limits>
 
+namespace homework3 {
+
 constexpr auto factorial(auto number) -> decltype(number)
 {
   static_assert(std::numeric_limits<decltype(number)>::is_integer, "Argument of factorial function must be integer type.");
@@ -23,3 +25,5 @@ struct factorial_t<0>
 {
   static const std::size_t value = 1;
 };
+
+}

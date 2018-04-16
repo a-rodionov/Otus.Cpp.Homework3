@@ -2,6 +2,8 @@
 
 #include <type_traits>
 
+namespace homework3 {
+
 struct c_fwd_list_node_base
 {
   c_fwd_list_node_base() = default;
@@ -176,7 +178,7 @@ public:
     clear();
     head.next = other.head.next;
     other.head.next = nullptr;
-    allocator = other.allocator;
+    allocator = std::move(other.allocator);
   }
 
   bool operator==(const custom_forward_list& other) const
@@ -302,4 +304,6 @@ template<typename T, typename Allocator>
 void swap(custom_forward_list<T, Allocator>& lhs, custom_forward_list<T, Allocator>& rhs)
 {
   lhs.swap(rhs);
+}
+
 }
