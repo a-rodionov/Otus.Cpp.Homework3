@@ -15,7 +15,7 @@ struct c_fwd_list_node : c_fwd_list_node_base
 {
   template<typename ... Args>
   c_fwd_list_node(Args&& ... args)
-    : c_fwd_list_node_base{}, value{std::forward<Args>(args)...} {};
+    : c_fwd_list_node_base{}, value{std::forward<Args>(args)...} {}
 
   T value;
 };

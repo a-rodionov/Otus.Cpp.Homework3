@@ -12,7 +12,7 @@ constexpr auto factorial(auto number) -> decltype(number)
     throw std::invalid_argument("Argument of factorial function must be positive integer.");
 
   return number ? number * factorial(number-1) : 1;
-};
+}
 
 template<std::size_t N>
 struct factorial_t
