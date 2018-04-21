@@ -22,9 +22,15 @@ add_executable(allocator_test_main test_main.cpp)
 # Настройка целей
 
 # для всех целей
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-Wpedantic -Wall -Wextra)
+#set(CMAKE_CXX_STANDARD 14)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#add_compile_options(-Wpedantic -Wall -Wextra)
+
+set_target_properties (allocator allocator_lib allocator_test_main PROPERTIES
+  CXX_STANDARD 14
+  CXX_STANDARD_REQUIRED ON
+  COMPILE_OPTIONS -Wpedantic -Wall -Wextra
+)
 
 target_link_libraries(allocator allocator_lib)
 
